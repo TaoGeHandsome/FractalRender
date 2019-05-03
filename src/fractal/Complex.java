@@ -12,6 +12,16 @@ public class Complex implements Cloneable{
 		this.imag = imag;
 	}
 	
+	public Complex(String src){
+		if (src.endsWith("i")){
+			real = 0;
+			imag = Double.parseDouble(src.substring(0, src.length()-1));
+		}else{
+			real = Double.parseDouble(src);
+			imag = 0;
+		}
+	}
+	
 	public String toString(){
 		String re = new String();
 		String im = new String();
@@ -39,12 +49,22 @@ public class Complex implements Cloneable{
 				imag * c.real + real * c.imag);
 	}
 	
-	public Complex div(Complex c){
+	public Complex div(Complex c) throws Exception{
 		Complex res = new Complex(0, 0);
 		if (c.real == 0 && c.imag == 0)
-			return null;
+			throw new Exception("Divided by zero");
 		res.real = (real * c.real + imag * c.imag) / (c.real * c.real + c.imag * c.imag);
 		res.imag = (imag * c.real - real * c.imag) / (c.real * c.real + c.imag * c.imag);
+		return res;
+	}
+	
+	public Complex pow(Complex c) throws Exception{
+		if (c.imag != 0 || ((int)c.real+0.0 != c.real))
+			throw new Exception("Powered by a non-int number.");
+		Complex res = new Complex(1, 0);
+		for (int i = 0; i < ((int) c.real); i++){
+			res = res.mul(this);
+		}
 		return res;
 	}
 	
@@ -65,18 +85,6 @@ public class Complex implements Cloneable{
 	private double real;
 	private double imag;
 
-	public static void main(String[] args) {
-		System.out.println(new Complex(0, -1));
-		System.out.println(new Complex(0, 0));
-		System.out.println(new Complex(0, 1));
-		System.out.println(new Complex(-1, -1));
-		System.out.println(new Complex(-1, 0));
-		System.out.println(new Complex(-1, 1));
-		System.out.println(new Complex(0, 2));
-		System.out.println(new Complex(2, 0));
-		System.out.println(new Complex(2, 2));
-	}
-
 	public void setReal(double d) {
 		this.real = d;
 	}
@@ -96,5 +104,22 @@ public class Complex implements Cloneable{
 	public double getImag() {
 		return imag;
 	}
-
+	
+	public static void main(String[] args) {
+//		System.out.println(new Complex(0, -1));
+//		System.out.println(new Complex(0, 0));
+//		System.out.println(new Complex(0, 1));
+//		System.out.println(new Complex(-1, -1));
+//		System.out.println(new Complex(-1, 0));
+//		System.out.println(new Complex(-1, 1));
+//		System.out.println(new Complex(0, 2));
+//		System.out.println(new Complex(2, 0));
+//		System.out.println(new Complex(2, 2));
+		try{
+			System.out.println(new Complex(2, 2).pow(new Complex(2, 1)));
+		}catch (Exception e){
+			System.out.println(e.getMessage());
+		}
+		
+	}
 }

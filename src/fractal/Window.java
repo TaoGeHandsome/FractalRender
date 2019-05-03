@@ -38,13 +38,19 @@ public class Window extends JFrame implements ActionListener{
 	private static final String MN_ABOUT = "About";
 	private static final String MNI_COPY = "Copy to clipboard      Ctrl+C";
 	private static final String MNI_SAVE = "Save as file ...             Ctrl+S";
-	private static final String MNI_EXIT = "Exit";
+	private static final String MNI_EXIT = "Exit                                Alt+F4";
 	private static final String MNI_UNDO = "Undo View       Ctrl+Z";
-	private static final String MNI_OPT_GRAPH = "Optimize Graph";
+	private static final String MNI_SET_VIEW1 = "Default";
+	private static final String MNI_SET_VIEW2 = "Classic";
+	private static final String MNI_SET_VIEW3 = "Rabbits";
+	private static final String MNI_SET_VIEW4 = "Dragon";
+	private static final String MNI_SET_VIEW5 = "Plane";
+	private static final String MNI_SET_VIEW6 = "Tri-Julia";
+	private static final String MNI_FIX_SCALING = "Fixed scaling";
+	private static final String MNI_OPT_GRAPH = "Optimize Graph (slow)";
 	private static final String MNI_OPT_SPEED = "Optimize Speed";
 	private static final String MNI_HELP = "Help...";
 	private static final String MNI_INFO = "Info...";
-	
 	
 	private static ControlPanel ctrl_panel = new ControlPanel();
 	private static ShowPanel show_panel = new ShowPanel();
@@ -52,20 +58,26 @@ public class Window extends JFrame implements ActionListener{
 	private static JMenuBar menuBar;
 	private static JFileChooser fc = new JFileChooser();
 	
+	public static int max_times;
 	public Window() {
 		Dimension screensize = Toolkit.getDefaultToolkit().getScreenSize();
 		int x = (screensize.width - DEFAULT_WIDTH) / 2;
 		int y = (screensize.height - DEFAULT_HEIGHT) / 2;
 		setLocation(x, y);
 		setSize(DEFAULT_WIDTH, DEFAULT_HEIGHT);
-		setTitle("Fractal Generator v1.0           By TGH");
+		setTitle("Fractal Generator v1.3           By TGH");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setResizable(false);
 		setLayout(null);
 
 		// Add Key Listener
 		addKeyListener(keyHandler);
-
+		ctrl_panel.addKeyListener(keyHandler);
+		ctrl_panel.txt_exp.addKeyListener(keyHandler);
+		ctrl_panel.btn_render.addKeyListener(keyHandler);
+		ctrl_panel.btn_reset.addKeyListener(keyHandler);
+		ctrl_panel.lbl_help.addKeyListener(keyHandler);
+		
 		// Add menu
 		menuBar = new JMenuBar();
 		
@@ -80,12 +92,28 @@ public class Window extends JFrame implements ActionListener{
 		
 		JMenu mnOption = new JMenu(MN_OPTION);
 		JMenuItem miUndo = new JMenuItem(MNI_UNDO);
+		JMenuItem miView1 = new JMenuItem(MNI_SET_VIEW1);
+		JMenuItem miView2 = new JMenuItem(MNI_SET_VIEW2);
+		JMenuItem miView3 = new JMenuItem(MNI_SET_VIEW3);
+		JMenuItem miView4 = new JMenuItem(MNI_SET_VIEW4);
+		JMenuItem miView5 = new JMenuItem(MNI_SET_VIEW5);
+		JMenuItem miView6 = new JMenuItem(MNI_SET_VIEW6);
+		JCheckBoxMenuItem miFixScaling = new JCheckBoxMenuItem(MNI_FIX_SCALING);
 		JCheckBoxMenuItem miOptimizeGraph = new JCheckBoxMenuItem(MNI_OPT_GRAPH);
 		JCheckBoxMenuItem miOptimizeSpeed = new JCheckBoxMenuItem(MNI_OPT_SPEED);
 		mnOption.add(miUndo);
 		mnOption.addSeparator();
+		//Initial pic formula
+		mnOption.add(miView1);
+		mnOption.add(miView2);
+		mnOption.add(miView3);
+		mnOption.add(miView4);
+		mnOption.add(miView5);
+		mnOption.add(miView6);
+		mnOption.addSeparator();
+		mnOption.add(miFixScaling);
 		mnOption.add(miOptimizeGraph);
-		mnOption.add(miOptimizeSpeed);
+//		mnOption.add(miOptimizeSpeed);
 		
 		JMenu mnHelp = new JMenu(MN_ABOUT);
 		JMenuItem miHelp = new JMenuItem(MNI_HELP);
@@ -103,6 +131,13 @@ public class Window extends JFrame implements ActionListener{
 		miSave.setFont(new Font("Arial", Font.PLAIN, 12));
 		miExit.setFont(new Font("Arial", Font.PLAIN, 12));
 		miUndo.setFont(new Font("Arial", Font.PLAIN, 12));
+		miView1.setFont(new Font("Arial", Font.PLAIN, 12));
+		miView2.setFont(new Font("Arial", Font.PLAIN, 12));
+		miView3.setFont(new Font("Arial", Font.PLAIN, 12));
+		miView4.setFont(new Font("Arial", Font.PLAIN, 12));
+		miView5.setFont(new Font("Arial", Font.PLAIN, 12));
+		miView6.setFont(new Font("Arial", Font.PLAIN, 12));
+		miFixScaling.setFont(new Font("Arial", Font.PLAIN, 12));
 		miOptimizeGraph.setFont(new Font("Arial", Font.PLAIN, 12));
 		miOptimizeSpeed.setFont(new Font("Arial", Font.PLAIN, 12));
 		miHelp.setFont(new Font("Arial", Font.PLAIN, 12));
@@ -138,6 +173,14 @@ public class Window extends JFrame implements ActionListener{
 	public static void setUndoEnabled(boolean enabled){
 		if (menuBar.getMenu(1) != null) 
 			menuBar.getMenu(1).getItem(0).setEnabled(enabled);
+	}
+
+	public static void resetView(){
+		show_panel.resetView();
+	}
+	
+	public static void setExp(String exp){
+		show_panel.setNewView(exp, 300);
 	}
 	
 	public static void saveImage(){
@@ -175,18 +218,54 @@ public class Window extends JFrame implements ActionListener{
 			case MNI_EXIT:
 				System.exit(0); break;
 			case MNI_UNDO:
-				show_panel.undoView(); break;
-			case MNI_OPT_GRAPH:
-				// TODO Optimize graph.
+				show_panel.undoView(); 
 				break;
-				
+			case MNI_SET_VIEW1:		// Default
+				setExp("z^2+0.3");
+				ctrl_panel.txt_exp.setText("z^2+0.3");
+				break;
+			case MNI_SET_VIEW2:		// Classic
+				setExp("z^2-0.75");
+				ctrl_panel.txt_exp.setText("z^2-0.75");
+				break;
+			case MNI_SET_VIEW3:		// Rabbit
+				setExp("z^2-0.123+0.745i");
+				ctrl_panel.txt_exp.setText("z^2-0.123+0.745i");
+				break;
+			case MNI_SET_VIEW4:		// Dragon
+				setExp("z^2-0.8+0.15i");
+				ctrl_panel.txt_exp.setText("z^2-0.8+0.15i");
+				break;
+			case MNI_SET_VIEW5:		// Plane
+				setExp("z^2-1.755");
+				ctrl_panel.txt_exp.setText("z^2-1.755");
+				break;
+			case MNI_SET_VIEW6:		// Tri-Julia
+				setExp("z^3-0.6+0.3i");
+				ctrl_panel.txt_exp.setText("z^3-0.6+0.3i");
+				break;
+			case MNI_FIX_SCALING:
+				ShowPanel.alwaysFixScale = !ShowPanel.alwaysFixScale;
+				break;
+			case MNI_OPT_GRAPH:
+				ShowPanel.boost = !ShowPanel.boost;
+				break;
 			case MNI_OPT_SPEED:
 				// TODO Optimize graph.
 				break;
-				
 			case MNI_HELP:
 				String[] help_options = new String[]{"    I know.    "};
-				String help_content = "Help Content";
+				String help_content = "Steps: \n"
+									+ "  1. Input expressions in plane text box;\n"
+									+ "  2. Click 'Render' button;\n"
+									+ "  3. Use your mouse to move in view box;\n"
+									+ "  4. Click 'Reset View' button to reset;\n"
+									+ "  5. Try some built-in exps in Option menu.\n"
+									+ "  6. Ctrl + C can copy this pic to clipboard;\n"
+									+ "  7. Share pics to your friend. You can save\n"
+									+ "     it in File menu.\n\n\n"
+									+ "     Made by TaoGeHandsome.\n\n"
+									+ "                                2017.06\n";
 				JOptionPane.showOptionDialog(null, help_content, "Help - Julia Render",
 						JOptionPane.OK_OPTION, JOptionPane.PLAIN_MESSAGE, null, help_options, help_options[0]);
 				break;
@@ -205,13 +284,19 @@ public class Window extends JFrame implements ActionListener{
 		}
 	}
 	
+	public static void errorDialog(String str){
+		String[] err_title = new String[]{"    Let me check it.    "};
+		JOptionPane.showOptionDialog(null, str, "Error occurs",
+				JOptionPane.OK_OPTION, JOptionPane.ERROR_MESSAGE, null, err_title, err_title[0]);
+	}
+	
 	KeyListener keyHandler = new KeyAdapter() {
 		public void keyPressed(KeyEvent e) {
 			if (e.getKeyCode() == 16)		// Shift
 				show_panel.setPressShift(true);
 			else if (e.getKeyCode() == 17)	// Ctrl
 				show_panel.setPressCtrl(true);
-			else if (e.getKeyCode() == 18)	// Alter
+			else if (e.getKeyCode() == 18)	// Alt
 				show_panel.setPressAlt(true);
 			if (e.isControlDown() && e.getKeyCode() == KeyEvent.VK_Z)
 				show_panel.undoView();
@@ -219,6 +304,7 @@ public class Window extends JFrame implements ActionListener{
 				Window.saveImage();
 			if (e.isControlDown() && e.getKeyCode() == KeyEvent.VK_C)
 				Window.copyImage();
+			if (e.getKeyCode() == 18) e.consume();
 		}
 
 		public void keyReleased(KeyEvent e) {
@@ -226,8 +312,19 @@ public class Window extends JFrame implements ActionListener{
 				show_panel.setPressShift(false);
 			else if (e.getKeyCode() == 17)	// Ctrl
 				show_panel.setPressCtrl(false);
-			else if (e.getKeyCode() == 18)	// Alter
+			else if (e.getKeyCode() == 18)	// Alt
 				show_panel.setPressAlt(false);
+			if (e.getKeyCode() == 18) e.consume();
+		}
+		
+		public void keyTyped(KeyEvent e){
+			if (e.getKeyCode() == 16)		// Shift
+				show_panel.setPressShift(false);
+			else if (e.getKeyCode() == 17)	// Ctrl
+				show_panel.setPressCtrl(false);
+			else if (e.getKeyCode() == 18)	// Alt
+				show_panel.setPressAlt(false);
+			if (e.getKeyCode() == 18) e.consume();
 		}
 	};
 }

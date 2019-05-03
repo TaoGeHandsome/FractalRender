@@ -2,15 +2,35 @@ package fractal;
 import java.awt.image.BufferedImage;
 
 public class Fractal {
-	private static int MAX_ITER = 1000;
+	private int MAX_ITER = 500;
+	private CalTree caltree;
+	private String exp;
+	private static String last_exp = "";
+	private boolean boost = false;
 	
-	public static Complex func(Complex z, Complex c){
-		z = z.mul(z).add(c);
-		return z;
+	public Fractal(String exp) throws Exception{
+		caltree = null;
+		try {
+			caltree = new CalTree(exp);
+		} catch (Exception e) {
+			throw e;
+		}
+		boost = false;
 	}
 	
-	public static BufferedImage createJuliaImage(String exp, int width, int height, double x0, double y0, double rx, double ry) throws Exception
+	public Fractal(String exp, boolean boost_graph) throws Exception{
+		caltree = null;
+		try {
+			caltree = new CalTree(exp);
+		} catch (Exception e) {
+			throw e;
+		}
+		boost = boost_graph;
+	}
+	
+	public BufferedImage createJuliaImage(String exp, int width, int height, double x0, double y0, double rx, double ry) throws Exception
 	{
+		long time = System.currentTimeMillis();
 		BufferedImage temp = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
 		Complex z = new Complex(0, 0);
 		for (int j = 0; j < height; j++){
@@ -19,43 +39,47 @@ public class Fractal {
 	            double y=(2*ry)*j/height+y0-ry;
 				z.setReal(x);
 				z.setImag(y);
-				int re_cnt = iter_times(exp, z);
-				temp.setRGB(i, j, get_color2(re_cnt));
+				int re_cnt = iter_times(z);
+				
+				temp.setRGB(i, j, boost ? get_color2(re_cnt): get_color(re_cnt));
 			}
 //			StatusPanel.setProgress((j+1)/(double)width * 100);
-			System.out.println((j+1)/(double)width * 100);
+//			System.out.println((j+1)/(double)width * 100);
 		}
-		StatusPanel.setStatus("Done!", StatusPanel.INFO_SUCCESS);
+		time = System.currentTimeMillis() - time;
+		StatusPanel.setStatus(""+time/1000.0, StatusPanel.INFO_SUCCESS);
 		return temp;
 	}
 	
-	private static int iter_times(String exp, Complex c){
+	private int iter_times(Complex c) throws Exception{
 		int i = 0;
-		CalCore cc = new CalCore();
+		
 		for (;i<MAX_ITER;i++){
-			
 			if (c.getMod()>=4)  
 	            break; 
-			c = cc.evaluate(cc.preProcess(exp, c));
-//	        double tmp=x*x-y*y+c.getReal();
-//	        y=x*y*2+c.getImag();
-//	        x=tmp;  
+			c = caltree.valueOf(c);
+//			c = cc.evaluate(cc.preProcess(exp, c));
 		}
+		last_exp = exp;
 		return i;
 	}
 	
-	private static int get_color(int iter){
+	public static String get_last_exp(){
+		return last_exp;
+	}
+	
+	private int get_color(int iter){
 		if (iter==MAX_ITER)
 	        return format_color(0, 0, 0);  
 	    else
 	    	return format_color(((iter*20)%256), ((iter*15+85)%256), (iter*30+171)%256);
 	}
 	
-	private static int sin_color(int iter){
+	private int sin_color(int iter){
 		return (int) ((Math.sin(iter*2*3.1415926/510-3.1415926*0.5)+1)*0.5*255 );
 	}
 	
-	private static int get_color2(int iter){
+	private int get_color2(int iter){
 		if (iter == MAX_ITER){
 	        return format_color(0,0,0);
 	    }else{ 

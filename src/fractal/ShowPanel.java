@@ -21,16 +21,13 @@ import javax.swing.event.MouseInputListener;
 public class ShowPanel extends JPanel {
 	public static final int PIC_WIDTH = 400;
 	public static final int PIC_HEIGHT = 400;
-	private double init_shiftx = -0.5;
+	private double init_shiftx = 0;
 	private double init_shifty = 0;
 	private double init_rx = 2;
 	private double init_ry = 2;
-	
-//	private static double shiftx = -0.5;
-//	private static double shifty = 0;
-//	private static double rx = init_rx;
-//	private static double ry = init_ry;
-	private static String cr = "x*x+0.2+0.5";
+	private static String exp = "z^2+0.3";
+	public static boolean boost = false;
+	public static boolean alwaysFixScale = false;
 	
 	LinkedList<ViewInfo> rect_history = new LinkedList<ViewInfo>();
 
@@ -60,16 +57,30 @@ public class ShowPanel extends JPanel {
 			return;
 		}
 		refreshView(shiftx, shifty, rx, ry, isRecord);
+		
 	}
 	
 	public void refreshView(double shiftx, double shifty, double rx, double ry, boolean isRecord){
 		StatusPanel.setScale(init_rx * init_ry / (rx * ry));
+		StatusPanel.setDetails(shiftx, shifty, rx, ry);
 		if(isRecord) rect_history.addLast(new ViewInfo(shiftx, shifty, rx, ry));
+		Fractal f = null;
 		try {
-			picbox.setIcon(new ImageIcon(Fractal.createJuliaImage(cr, 400, 400, shiftx, shifty, rx, ry)));
+			f = new Fractal(exp, boost);
 		} catch (Exception e) {
-			e.printStackTrace();
+			Window.errorDialog(e.getMessage());
+			exp = Fractal.get_last_exp();
+			return ;
 		}
+		BufferedImage bi = null;
+		try {
+			bi = f.createJuliaImage(exp, 400, 400, shiftx, shifty, rx, ry);
+		} catch (Exception e) {
+			Window.errorDialog(e.getMessage());
+			exp = Fractal.get_last_exp();
+			return ;
+		}
+		picbox.setIcon(new ImageIcon(bi));
 		Window.setUndoEnabled(rect_history.size() > 1);
 	}
 	
@@ -79,7 +90,7 @@ public class ShowPanel extends JPanel {
 			ViewInfo info = rect_history.peekLast();
 			refreshView(info.getShiftx(), info.getShifty(), info.getRx(), info.getRy(), false);
 		}else{
-			// TODO Beep
+			Toolkit.getDefaultToolkit().beep();
 		}
 	}
 	
@@ -89,9 +100,29 @@ public class ShowPanel extends JPanel {
 		refreshView(info.getShiftx(), info.getShifty(), info.getRx(), info.getRy(), true);
 	}
 	
+	public void setNewView(String str, int max_times){
+		@SuppressWarnings("unused")
+		Fractal temp = null;
+		try{
+			temp = new Fractal(str);
+		}catch (Exception e){
+			// Warning!
+//			Toolkit.getDefaultToolkit().beep();
+			String error_content = "Your expression:\n"+
+					str + "\nhas errors:\n" + e.getMessage() + "\nPlease check it!\n\n";
+			Window.errorDialog(error_content);
+			StatusPanel.setStatus("Expression not valid!", StatusPanel.INFO_ERROR);
+			return ;
+		}
+		temp = null;
+		exp = str;
+		ViewInfo info = rect_history.peekFirst();
+		rect_history.clear();
+		refreshView(info.getShiftx(), info.getShifty(), info.getRx(), info.getRy(), true);
+	}
+	
 	// Mouse and Keyboard Event of View
 	private static Rectangle rect = null;
-	private boolean alwaysFixScale = false;
 	private boolean isPressLeftMouse = false;
 	private boolean isPressRightMouse = false;
 	private boolean isPressShift = false;
@@ -103,22 +134,32 @@ public class ShowPanel extends JPanel {
 		Point start_point;
 
 		public void mouseClicked(MouseEvent e) {
-			if (e.getButton() == 1 && (isPressCtrl || isPressAlt)) {
-				if (isPressAlt && rect != null)
+			if (e.getButton() != 1) return ;
+			if (isPressCtrl){
+				refreshView(true);
+				rect = null;
+				repaint();
+			}else if (isPressAlt){
+				if (rect != null)
 					rect = new Rectangle(rect.x - PIC_HEIGHT * 3 / 4, rect.y - PIC_HEIGHT * 3 / 4, PIC_WIDTH * 2,
 							PIC_HEIGHT * 2);
 				refreshView(true);
 				rect = null;
 				repaint();
 			}
+			
+			if (e.getButton() == 1 && (isPressCtrl || isPressAlt)) {
+				if (isPressAlt && rect != null)
+					repaint();
+			}
 		}
 		
 		public void mouseMoved(MouseEvent e) {
 			if (!isPressLeftMouse && (isPressCtrl || isPressAlt)) {
+				isMoving = false;
 				Point p = e.getPoint();
 				p.x = p.x < PIC_WIDTH / 4 ? PIC_WIDTH / 4 : (p.x > PIC_WIDTH * 3 / 4 ? PIC_WIDTH * 3 / 4 : p.x);
 				p.y = p.y < PIC_HEIGHT / 4 ? PIC_HEIGHT / 4 : (p.y > PIC_HEIGHT * 3 / 4 ? PIC_HEIGHT * 3 / 4 : p.y);
-
 				rect = new Rectangle();
 				if (isPressCtrl) {
 					makeRectangle(p, new Point(p.x + PIC_WIDTH / 4, p.y + PIC_HEIGHT / 4));
@@ -132,16 +173,19 @@ public class ShowPanel extends JPanel {
 		}
 
 		public void mousePressed(MouseEvent e) {
-			if (e.getButton() == 1 && (isPressCtrl || isPressAlt))
+			if (e.getButton() == 1)
+				isPressLeftMouse = true;
+			if (e.getButton() == 3)
+				isPressRightMouse = true;
+			
+			if (isPressLeftMouse && (isPressCtrl || isPressAlt))
 				return;
 			
 			if (e.getButton() == 3) {
-				isPressRightMouse = true;
 				picbox.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
 				start_point = e.getPoint();
 				rect = new Rectangle();
 			} else if (e.getButton() == 1 && !isPressCtrl) {
-				isPressLeftMouse = true;
 				isMoving = true;
 				start_point = e.getPoint();
 				rect = new Rectangle();
@@ -150,10 +194,17 @@ public class ShowPanel extends JPanel {
 				rect = new Rectangle();
 			} else
 				rect = null;
+
 		}
 
 		public void mouseReleased(MouseEvent e) {
-			if (e.getButton() == 1 && (isPressCtrl || isPressAlt))
+			if (e.getButton() == 1)
+				isPressLeftMouse = false;
+			if (e.getButton() == 3)
+				isPressRightMouse = false;
+			
+			if (e.getButton() == 1 && (isPressCtrl || isPressAlt || isPressShift) && 
+					e.getPoint()!= start_point) 
 				return;
 			makeRectangle(start_point, e.getPoint());
 			if (rect.width > 0 && rect.height > 0) {
@@ -161,25 +212,21 @@ public class ShowPanel extends JPanel {
 				rect = null;
 				repaint();
 			}
-			if (e.getButton() == 1) {
+			if (e.getButton() == 1) 
 				isMoving = false;
-				isPressLeftMouse = false;
-			}else if (e.getButton() == 3){
-				isPressRightMouse = false;
-			}
 			picbox.setCursor(new Cursor(Cursor.MOVE_CURSOR));
 		}
 
 		public void mouseDragged(MouseEvent e) {
-			if (isPressLeftMouse && isPressCtrl && !isPressShift)
-				return;
+			if (isPressLeftMouse && (isPressCtrl || isPressShift || isPressAlt))
+				return ;
 			if (e.getX() < 0 || e.getY() < 0)
 				return;
 			if (isPressLeftMouse)
 				picbox.setCursor(new Cursor(Cursor.MOVE_CURSOR));
 			else if (isPressRightMouse)
 				picbox.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-			if (rect != null && !isPressCtrl) {
+			if (rect != null) {// && !isPressCtrl
 				makeRectangle(start_point, e.getPoint());
 				repaint();
 			}
@@ -189,14 +236,19 @@ public class ShowPanel extends JPanel {
 			if (rect == null)
 				return;
 			int x, y, w, h;
+			
+			if (isPressLeftMouse && (isPressCtrl || isPressShift))
+				return ;
 			if (!isMoving) {
+				
 				int p2x = p2.x < 0 ? 0 : (p2.x > PIC_WIDTH ? PIC_WIDTH - 1 : p2.x);
 				int p2y = p2.y < 0 ? 0 : (p2.y > PIC_HEIGHT ? PIC_HEIGHT - 1 : p2.y);
 				x = Math.min(p1.x, p2x);
 				y = Math.min(p1.y, p2y) + 5;
 				w = Math.abs(p1.x - p2x);
 				h = Math.abs(p1.y - p2y);
-				if (isPressShift || alwaysFixScale) {
+				
+				if (isPressShift || alwaysFixScale) {	// Fixed Scaling
 					int min = Math.min(w, h);
 					w = min;
 					h = min;
@@ -205,7 +257,7 @@ public class ShowPanel extends JPanel {
 					if (p2.y < p1.y)
 						y = y + p1.y - p2.y - h;
 				}
-				if (isPressCtrl) {
+				if (isPressCtrl) {	// 1:1 Scaling
 					x -= p2.x < p1.x ? 0 : w;
 					y -= p2.y < p1.y ? 0 : h;
 					w *= 2;
@@ -218,6 +270,7 @@ public class ShowPanel extends JPanel {
 				h = PIC_HEIGHT;
 			}
 			rect.setBounds(x, y, w, h);
+			
 		}
 	};
 	
@@ -229,7 +282,7 @@ public class ShowPanel extends JPanel {
 		this.isPressCtrl = isPressCtrl;
 		if (isPressCtrl && !isPressLeftMouse && !isPressRightMouse)
 			picbox.setCursor(Toolkit.getDefaultToolkit().createCustomCursor(Toolkit.getDefaultToolkit()
-					.getImage("pic/zoom_in.png").getScaledInstance(64, 64, Image.SCALE_SMOOTH), new Point(0, 0), ""));
+					.getImage("icon/zoom_in.png").getScaledInstance(64, 64, Image.SCALE_SMOOTH), new Point(0, 0), ""));
 		else if (!isPressLeftMouse)
 			picbox.setCursor(new Cursor(Cursor.MOVE_CURSOR));
 		if (isPressRightMouse)
@@ -245,7 +298,7 @@ public class ShowPanel extends JPanel {
 		this.isPressAlt = isPressAlt;
 		if (isPressAlt && !isPressLeftMouse && !isPressRightMouse)
 			picbox.setCursor(Toolkit.getDefaultToolkit().createCustomCursor(Toolkit.getDefaultToolkit()
-					.getImage("pic/zoom_out.png").getScaledInstance(64, 64, Image.SCALE_SMOOTH), new Point(0, 0), ""));
+					.getImage("icon/zoom_out.png").getScaledInstance(64, 64, Image.SCALE_SMOOTH), new Point(0, 0), ""));
 		else if (!isPressLeftMouse)
 			picbox.setCursor(new Cursor(Cursor.MOVE_CURSOR));
 		if (isPressRightMouse)
@@ -261,10 +314,6 @@ public class ShowPanel extends JPanel {
 		this.isMoving = isMoving;
 	}
 
-	public void setAlwaysFixScale(boolean alwaysFixScale) {
-		this.alwaysFixScale = alwaysFixScale;
-	}
-	
 	public BufferedImage getBufferedImage(){
 		Image image = ((ImageIcon)picbox.getIcon()).getImage();
 		int w = image.getWidth(this); 
